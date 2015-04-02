@@ -1,0 +1,128 @@
+<?php
+
+/**
+ * @file
+ *  Installation tasks: creates new entities and adds required fields to thei
+ *  email entity.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function mail_queue_install() {
+  // Add required new fields to the email type entities.
+  mail_queue_add_type_fields();
+  // Add required new fields to the email entities.
+  mail_queue_add_mail_fields();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function mail_queue_uninstall() {
+  drupal_load('module', 'mail_queue');
+  $instances = mail_queue_entity_type_field_instances();
+  foreach ($instances as $instance) {
+    field_delete_instance($instance, TRUE);
+  }
+  foreach (variable_get('mail_queue_list', array()) as $type) {
+    $instances = mail_queue_entity_field_instances($type);
+    foreach ($instances as $instance) {
+      field_delete_instance($instance, FALSE);
+    }
+  }
+  field_delete_field('mail_queue_is_sent');
+  variable_del('mail_queue_list');
+}
+
+/**
+ * Helper function.
+ *
+ * Adds the required fields to the entity_email_type.
+ */
+function mail_queue_add_type_fields() {
+  $bases = mail_queue_entity_type_field_bases();
+  foreach ($bases as $base) {
+    field_create_field($base);
+  }
+
+  $instances = mail_queue_entity_type_field_instances();
+  foreach ($instances as $instance) {
+    field_create_instance($instance);
+  }
+}
+
+/**
+ * Helper function.
+ *
+ * Gets the list of field bases related with the entity_email_type entity.
+ */
+function mail_queue_entity_type_field_bases() {
+  $bases[] = array(
+    'field_name' => 'mail_queue_frequency',
+    'type' => 'list_integer',
+    'settings' => array(
+      'allowed_values' => array(
+        '0' => 'Disabled (or manual send)',
+        '-1' => 'Send with Cron',
+        '1' => 'Send hourly',
+        '24' => 'Send daily',
+        '168' => 'Send weekly',
+      ),
+    ),
+    'locked' => TRUE,
+  );
+  $bases[] = array(
+    'field_name' => 'mail_queue_delay',
+    'type' => 'list_integer',
+    'settings' => array(
+      'allowed_values' => array(
+        '0' => 'No delay',
+        '1' => '1 cycle',
+        '2' => '2 cycles',
+      ),
+    ),
+  );
+  $bases[] = array(
+    'field_name' => 'mail_queue_sent',
+    'type' => 'number_integer',
+  );
+  return $bases;
+}
+
+/**
+ * Helper function.
+ *
+ * Gets the list of field instances related with the entity_email_type entity.
+ */
+function mail_queue_entity_type_field_instances() {
+  $field_instances[] = array(
+    'field_name' => 'mail_queue_frequency',
+    'label' => 'How frequently do you want to send the emails?',
+    'entity_type' => 'entity_email_type',
+    'bundle' => 'entity_email_type',
+    'required' => TRUE,
+    'default_value' => array(
+      array('value' => '0'),
+    ),
+  );
+  $field_instances[] = array(
+    'field_name' => 'mail_queue_delay',
+    'label' => 'Adds a delay to send the emails',
+    'entity_type' => 'entity_email_type',
+    'bundle' => 'entity_email_type',
+    'default_value' => array(
+      array('value' => '0'),
+    ),
+  );
+  $field_instances[] = array(
+    'field_name' => 'mail_queue_sent',
+    'label' => 'The last time it was sent',
+    'entity_type' => 'entity_email_type',
+    'bundle' => 'entity_email_type',
+    'default_value' => array(
+      array('value' => '0'),
+    ),
+  );
+  return $field_instances;
+}

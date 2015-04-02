@@ -1,0 +1,9 @@
+name = Mail Queue
+description = Allows the user to create mail queues, where mails are stored and sent during cron runs.
+core = 7.x
+version = 7.x-1.0
+
+dependencies[] = entity_email
+dependencies[] = xautoload
+
+files[] = tests/mail_queue.test

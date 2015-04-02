@@ -1,0 +1,107 @@
+<?php
+
+/**
+ * @file
+ *  Tests the mail queue system.
+ */
+
+class MailQueueTestCase extends DrupalWebTestCase {
+  private $email_type = 'test_template_creation';
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Mail Queue',
+      'description' => 'Tests the Mail Queue system',
+      'group' => 'Mail Queue',
+    );
+  }
+
+  function setUp() {
+    parent::setUp(array('entity_email', 'mail_queue'));
+
+    $this->dest_user = $this->drupalCreateUser(array());
+
+    $this->admin_user = $this->drupalCreateUser(array(
+      'administer entity email types',
+      'manage entity email types',
+      'administer entity email',
+    ));
+    $this->drupalLogin($this->admin_user);
+    entity_info_cache_clear();
+    $this->postNewEntityEmailType($this->email_type, 1, 1);
+  }
+
+  /**
+   * Tests if the required fields have been created in the Email Types.
+   */
+  function testEntityEmailHasMailQueueFields() {
+    $this->drupalGet('admin/structure/entity_email_type/add');
+    $this->assertText(t('How frequently do you want to send the emails?'), 'Frequency field added correctly');
+    $this->assertText(t('Adds a delay to send the emails'), 'Delay field added correctly');
+  }
+
+  /**
+   * Tests that entity email types can be created with the new fields.
+   */
+  function testEntityEmailTypeWithMailQueueCreation() {
+    $template = entity_email_type_load($this->email_type);
+
+    $frequency = field_get_items('entity_email_type', $template, 'mail_queue_frequency')[0]['value'];
+    $delay = field_get_items('entity_email_type', $template, 'mail_queue_delay')[0]['value'];
+    $sent = field_get_items('entity_email_type', $template, 'mail_queue_sent')[0]['value'];
+
+    $this->assertEqual(1, $frequency, t('Frequency field has @first and should be 1', array('@first' => $frequency)));
+    $this->assertEqual(1, $delay, t('Delay field has @first and should be 1', array('@first' => $delay)));
+    $this->assertEqual(0, $sent, t('Sent field has @first and should be 0', array('@first' => $sent)));
+  }
+
+  /**
+   * Tests that entity email can be created with the new fields.
+   */
+  function testEntityEmailWithMailQueueCreation() {
+    $template = entity_email_type_load($this->email_type);
+    $entity_email = $this->createNewEntityEmail($this->email_type);
+
+    $entity_email->save();
+    $entity_email->mail_queue_is_sent[LANGUAGE_NONE][0]['value'] = 0;
+    $entity_email->save();
+    $is_sent = field_get_items('entity_email', $entity_email, 'mail_queue_is_sent')[0]['value'];
+    $this->assertEqual(0, $is_sent, t('The is sent field has @v and should be 0', array('@v' => $is_sent)));
+  }
+
+  /**
+   * Tests that we can force the sending of all the emails.
+   */
+  function testMailQueueForceSending() {
+    $template = entity_email_type_load($this->email_type);
+    $entity_email = $this->createNewEntityEmail($this->email_type);
+    Drupal\MailQueue\MailQueueList::sendMails(TRUE);
+    $this->assertEqual(1, count($this->drupalGetMails()), t('An e-mail has been send'));
+    // TODO review the next functions:
+    // assertMail()
+    // $this->drupalGetMails()
+  }
+
+  private function postNewEntityEmailType($id, $frequency = 0, $delay = 0) {
+    $post_data = array(
+      'label' => $id,
+      'name' => $id,
+      'subject' => 'This is the subject',
+      'mail[entity_email_mail_body_plain][und][0][value]' => 'This is the body',
+      'mail_queue_frequency[und]' => $frequency,
+      'mail_queue_delay[und]' => $delay,
+    );
+    $this->drupalPost('admin/structure/entity_email_type/add', $post_data, t('Save template'));
+  }
+
+  private function createNewEntityEmail($id) {
+    $values = array(
+      'fuid' => $this->admin_user->uid,
+      'tuid' => $this->dest_user->uid,
+      'mail_to' => 'email@example.com',
+    );
+    $entity = entity_email_create($id, $values);
+    return $entity;
+  }
+
+}

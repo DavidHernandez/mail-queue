@@ -1,0 +1,131 @@
+<?php
+
+/**
+ * @file
+ *  Creates different mail queues that will be send on cron runs.
+ */
+
+/**
+ * Implements hook_cron().
+ */
+function mail_queue_cron() {
+  Drupal\MailQueue\MailQueueList::sendMails();
+}
+
+/**
+ * Implements hook_xautoload().
+ */
+function mail_queue_xautoload($adapter) {
+  $adapter->addPsr4('Drupal\MailQueue\\', 'src/MailQueue');
+}
+
+/**
+ * Implements hook_field_attach_create_bundle().
+ */
+function mail_queue_field_attach_create_bundle($type, $bundle) {
+  $function = 'mail_queue_' . $type . '_entity_insert';
+  if (function_exists($function)) {
+    $function($bundle);
+  }
+}
+
+/**
+ * Implements hook_entity_delete().
+ */
+function mail_queue_entity_delete($entity, $type) {
+  $function = 'mail_queue_' . $type . '_entity_delete';
+  if (function_exists($function)) {
+    $function($entity);
+  }
+}
+
+/**
+ * Adds a field to the entity_email entity when it's created.
+ */
+function mail_queue_entity_email_entity_insert($bundle) {
+  $instances = mail_queue_entity_field_instances($bundle);
+  foreach ($instances as $instance) {
+    if (is_null(field_info_field($instance['field_name']))) {
+      mail_queue_add_mail_fields();
+    }
+    field_create_instance($instance);
+  }
+  Drupal\MailQueue\MailQueueList::addQueue($bundle);
+}
+
+/**
+ * Deletes the fields from the entity_email entity when it's created and removes the queues.
+ */
+function mail_queue_entity_email_type_entity_delete($entity) {
+  $instances = mail_queue_entity_field_instances($entity->name);
+  foreach ($instances as $instance) {
+    field_delete_instance($instance);
+  }
+  Drupal\MailQueue\MailQueueList::deleteQueue($entity->name);
+}
+
+/**
+ * Helper function.
+ *
+ * Adds the required fields to the entity_email_type.
+ */
+function mail_queue_add_mail_fields() {
+  $bases = mail_queue_entity_field_bases();
+  foreach ($bases as $base) {
+    field_create_field($base);
+  }
+}
+
+/**
+ * Returns the list of field instances that need to be added to the entity_email.
+ */
+function mail_queue_entity_field_instances($bundle) {
+  $field_instances[] = array(
+    'field_name' => 'mail_queue_is_sent',
+    'label' => 'Enable this email as a queue',
+    'entity_type' => 'entity_email',
+    'bundle' => $bundle,
+    'default_value' => array(
+      array('0' => 'No'),
+    ),
+  );
+  return $field_instances;
+}
+
+/**
+ * Helper function.
+ *
+ * Gets the list of field bases related with the entity_email_type entity.
+ */
+function mail_queue_entity_field_bases() {
+  $bases[] = array(
+    'field_name' => 'mail_queue_is_sent',
+    'type' => 'list_boolean',
+    'settings' => array(
+      'allowed_values' => array(
+        '0' => t('No'),
+        '1' => t('Yes'),
+      ),
+    ),
+    'locked' => TRUE,
+  );
+  return $bases;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function mail_queue_form_entity_email_type_form_alter(&$form, &$form_state, $form_id) {
+  $form['mail']['mail_queue_sent']['#access'] = FALSE;
+  $form['mail_queue_fieldset'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Mail Queue'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['mail_queue_fieldset']['mail_queue_delay'] = $form['mail']['mail_queue_delay'];
+  unset($form['mail']['mail_queue_delay']);
+  $form['mail_queue_fieldset']['mail_queue_frequency'] = $form['mail']['mail_queue_frequency'];
+  unset($form['mail']['mail_queue_frequency']);
+}
+
