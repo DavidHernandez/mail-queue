@@ -129,3 +129,40 @@ function mail_queue_form_entity_email_type_form_alter(&$form, &$form_state, $for
   unset($form['mail']['mail_queue_frequency']);
 }
 
+/**
+ * Implements hook_menu().
+ */
+function mail_queue_menu() {
+  $menu['test-mail-queue'] = array(
+    'title' => 'Test the MailQueue',
+    'page callback' => 'mail_queue_testing_page',
+    'access callback' => TRUE,
+  );
+  return $menu;
+}
+
+/**
+ * Page callback for test-mail-queue.
+ */
+function mail_queue_testing_page() {
+  $email_template = array(
+    'name' => 'test_type',
+    'label' => 'test_type',
+    'subject' => 'This is the subject',
+    //'mail[entity_email_mail_body_plain][und][0][value]' => 'This is the body',
+    //'mail_queue_frequency[und]' => $frequency,
+    //'mail_queue_delay[und]' => $delay,
+  );
+  $type_entity = entity_email_type_create($email_template);
+  $type_entity->save();
+
+  $email = array(
+    'fuid' => 1,
+    'tuid' => 2,
+    'mail_to' => 'email@example.com',
+  );
+  $email_entity = entity_email_create('test_type', $email);
+  $email_entity->save();
+  Drupal\MailQueue\MailQueueList::sendMails(TRUE);
+  return 'Hiya!';
+}
