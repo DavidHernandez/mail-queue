@@ -7,6 +7,8 @@
 
 namespace Drupal\MailQueue;
 
+use \EntityFieldQuery;
+
 class MailQueue {
   private $id;
   private $lastShipment;
@@ -43,11 +45,13 @@ class MailQueue {
     $ids = array();
     $query = new EntityFieldQuery();
     $query->entityCondition('entity_type', 'entity_email');
-    $query->fieldCondition('mail_queue_sent', 'value', 0);
+    $query->entityCondition('bundle', $this->id);
+    $query->fieldCondition('mail_queue_is_sent', 'value', 0);
     if ($this->frequency) {
       $step = time() - $this->getTimeBetweenShipments();
       $query->propertyCondition('created', $step, '<');
     }
+    $results = $query->execute();
     return entity_email_load_multiple($ids);
   }
 
@@ -75,7 +79,7 @@ class MailQueue {
   private function updateLastShipment() {
     $this->lastShipment = time();
     $entity = entity_email_type_load($this->id);
-    $langcode = field_language('entity_email', $entity, 'mail_queue_sent');
+    $langcode = field_language('entity_email_type', $entity, 'mail_queue_sent');
     $entity->mail_queue_sent[$langocde][0]['value'] = $this->lastShipment;
     $entity->save();
   }

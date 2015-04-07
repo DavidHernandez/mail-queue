@@ -60,11 +60,11 @@ class MailQueueTestCase extends DrupalWebTestCase {
    */
   function testEntityEmailWithMailQueueCreation() {
     $template = entity_email_type_load($this->email_type);
+
     $entity_email = $this->createNewEntityEmail($this->email_type);
 
     $entity_email->save();
-    $entity_email->mail_queue_is_sent[LANGUAGE_NONE][0]['value'] = 0;
-    $entity_email->save();
+
     $is_sent = field_get_items('entity_email', $entity_email, 'mail_queue_is_sent')[0]['value'];
     $this->assertEqual(0, $is_sent, t('The is sent field has @v and should be 0', array('@v' => $is_sent)));
   }
@@ -73,13 +73,9 @@ class MailQueueTestCase extends DrupalWebTestCase {
    * Tests that we can force the sending of all the emails.
    */
   function testMailQueueForceSending() {
-    $template = entity_email_type_load($this->email_type);
     $entity_email = $this->createNewEntityEmail($this->email_type);
     Drupal\MailQueue\MailQueueList::sendMails(TRUE);
     $this->assertEqual(1, count($this->drupalGetMails()), t('An e-mail has been send'));
-    // TODO review the next functions:
-    // assertMail()
-    // $this->drupalGetMails()
   }
 
   private function postNewEntityEmailType($id, $frequency = 0, $delay = 0) {

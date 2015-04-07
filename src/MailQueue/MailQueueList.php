@@ -82,7 +82,7 @@ class MailQueueList {
     $queues = variable_get(MAIL_QUEUE_VAR, array());
     foreach ($queues as $id) {
       // TODO this is failing. Fix me!
-      $this->mailQueues[] = new MailQueue($id);
+      $this->mailQueues[$id] = new MailQueue($id);
     }
   }
 
