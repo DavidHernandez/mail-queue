@@ -145,6 +145,9 @@ function mail_queue_menu() {
  * Page callback for test-mail-queue.
  */
 function mail_queue_testing_page() {
+  if ($type_entity = entity_email_type_load('test_type')) {
+    $type_entity->delete();
+  }
   $email_template = array(
     'name' => 'test_type',
     'label' => 'test_type',

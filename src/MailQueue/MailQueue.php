@@ -24,11 +24,14 @@ class MailQueue {
   private $delay;
 
   public function __construct($id) {
+    $this->id = $id;
     $entity = entity_email_type_load($id);
-    $this->id = $entity->name;
-    $this->lastShipment = field_get_items('entity_email_type', $entity, 'mail_queue_sent')[0]['value'];
-    $this->frequency = field_get_items('entity_email_type', $entity, 'mail_queue_frequency')[0]['value'];
-    $this->delay = field_get_items('entity_email_type', $entity, 'mail_queue_delay')[0]['value'];
+    // For delete operations, the entity will no longer exists. But we don't need it anyways.
+    if ($entity) {
+      $this->lastShipment = field_get_items('entity_email_type', $entity, 'mail_queue_sent')[0]['value'];
+      $this->frequency = field_get_items('entity_email_type', $entity, 'mail_queue_frequency')[0]['value'];
+      $this->delay = field_get_items('entity_email_type', $entity, 'mail_queue_delay')[0]['value'];
+    }
   }
 
   public function send($force = FALSE) {
@@ -80,7 +83,7 @@ class MailQueue {
     $this->lastShipment = time();
     $entity = entity_email_type_load($this->id);
     $langcode = field_language('entity_email_type', $entity, 'mail_queue_sent');
-    $entity->mail_queue_sent[$langocde][0]['value'] = $this->lastShipment;
+    $entity->mail_queue_sent[$langcode][0]['value'] = $this->lastShipment;
     $entity->save();
   }
 
